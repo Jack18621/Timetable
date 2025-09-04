@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Jack — 2-Week Timetable (Mobile)</title>
+<style>
+  :root{
+    --bg:#0b0f17; --card:#111827; --ink:#e5e7eb; --muted:#9aa4b2;
+    --hl:#38bdf8; --line:#1f2937; --pill:#0e1625; --accent:#60a5fa;
+    --radius:16px;
+  }
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:600 16px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    -webkit-font-smoothing:antialiased; padding:12px;
+  }
+  .wrap{max-width:560px;margin:0 auto; display:flex; flex-direction:column; gap:12px}
+  header{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; position:sticky; top:8px; z-index:10;
+  }
+  h1{margin:0; font-size:18px}
+  .week-pill{
+    display:flex; gap:10px; align-items:center; background:var(--pill);
+    border:1px solid var(--line); border-radius:999px; padding:8px 12px;
+    color:var(--muted);
+  }
+  .week-pill strong{color:var(--ink)}
+  .controls{display:flex; gap:8px}
+  button{
+    appearance:none; border:1px solid var(--line); background:var(--pill); color:var(--ink);
+    padding:9px 12px; border-radius:12px; font-weight:800
+  }
+  button.primary{background:linear-gradient(90deg,var(--hl),var(--accent)); color:#08131b; border-color:transparent}
+  .day{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .day header{
+    position:relative; top:auto; background:transparent; border:none; border-radius:0;
+    padding:12px 14px;
+  }
+  .day-title{font-size:16px; letter-spacing:.3px}
+  .today .day-title{color:var(--hl)}
+  .list{display:flex; flex-direction:column}
+  .row{
+    display:grid; grid-template-columns: 28px 1fr; gap:10px;
+    border-top:1px solid var(--line); padding:12px 14px;
+  }
+  .pnum{
+    width:28px;height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    background:var(--pill); color:var(--muted); font-size:12px; font-weight:800;
+  }
+  .main{font-size:16px}
+  .sub{font-size:12px; color:var(--muted); margin-top:2px; font-weight:700}
+  .today .row{background:linear-gradient(180deg,rgba(56,189,248,0.08),transparent 40%)}
+  .legend{color:var(--muted); font-size:12px; padding:0 4px}
+  footer{color:var(--muted); font-size:12px; text-align:center; padding:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Jack’s Timetable</h1>
+    <div class="week-pill">Week: <strong id="weekLabel">A</strong></div>
+    <div class="controls">
+      <button id="toggle">Flip A/B</button>
+      <button id="todayBtn" class="primary">Today</button>
+    </div>
+  </header>
+
+  <div class="legend">No times shown — periods are listed in order.</div>
+
+  <div id="days"></div>
+
+  <footer>Seeded so that <b>Thu 4 Sep 2025</b> = <b>Week A</b>. The week flips every Monday.</footer>
+</div>
+
+<script>
+/* --------------------------
+   Data from your photo
+   -------------------------- */
+
+const DATA = {
+  // Helper: subject code -> nice name (fallback to code if unknown)
+  subjectNames(code){
+    const m = /\/([A-Za-z]+)\d*/.exec(code||"");
+    const k = m ? m[1].toLowerCase() : "";
+    const map = {
+      sc:"Science", en:"English", ma:"Maths", gg:"Geography", bs:"Business",
+      re:"RE", cpl:"Computer Science", ho:"Tutor", pe:"PE", ec:"Economics"
+    };
+    return map[k] || code;
+  },
+
+  // Week A (MonA..FriA)
+  A: {
+    Mon: [
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11G/En1", room:"C8",  teacher:"Mrs H C Bell" },
+      { code:"11G/Sc1", room:"C38", teacher:"Mr C A James" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+    ],
+    Tue: [
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11C/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" },
+      // (6th slot blank in photo)
+    ],
+    Wed: [
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+    ],
+    Thu: [
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11C/Gg1", room:"C20", teacher:"Mrs H E R Smith" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+    ],
+    Fri: [
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11G/Re1", room:"C19", teacher:"Mrs S A Wigzell" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+    ],
+  },
+
+  // Week B (MonB..FriB)
+  B: {
+    Mon: [
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11G/Ec1", room:"C22", teacher:"Mr E T Houghton" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      // 4a blank on sheet
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" }, // 4b
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+    ],
+    Tue: [
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      // 4a blank
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" }, // 4b
+      { code:"11G/Sc1", room:"C33", teacher:"Mr C A James" },
+      // 6 blank
+    ],
+    Wed: [
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      // 4a blank
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" }, // 4b
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11G/Sc1", room:"C38", teacher:"Mr C A James" },
+    ],
+    Thu: [
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      // 4a blank
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" }, // 4b
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+    ],
+    Fri: [
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      // 4a blank
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" }, // 4b
+      { code:"11G/En1", room:"C8",  teacher:"Mrs H C Bell" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+    ],
+  }
+};
+
+/* --------------------------
+   Simple A/B week logic
+   Seed: 2025-09-04 (Thu) = Week A (you said “ThuA”)
+   Week flips each Monday.
+   -------------------------- */
+const SEED_ISO = "2025-09-04";
+const SEED_IS_A = true;
+
+const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
+const $ = s => document.querySelector(s);
+const daysEl = $("#days");
+
+function parseISO(s){const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);}
+function fmtISO(d){return d.toISOString().slice(0,10);}
+function startMon(d){const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x;}
+function weekDiff(a,b){const ms=7*24*60*60*1000; return Math.round((startMon(a)-startMon(b))/ms);}
+function weekFor(date){
+  const diff = Math.abs(weekDiff(date, parseISO(SEED_ISO)));
+  const same = (diff % 2) === 0;
+  return (SEED_IS_A ? (same ? "A":"B") : (same ? "B":"A"));
+}
+
+let viewDate = new Date();  // what we’re viewing (today by default)
+let forcedFlip = 0;         // taps on Flip A/B adjust by ±7 days
+
+function effectiveWeek(){ return weekFor(new Date(viewDate)); }
+
+function subjectTitle(code){
+  const nice = DATA.subjectNames(code);
+  // If the nice name is the same as code, just print code;
+  // else print the friendly name.
+  return nice === code ? code : nice;
+}
+
+function render(){
+  const wk = effectiveWeek();
+  $("#weekLabel").textContent = wk;
+
+  daysEl.innerHTML = "";
+  const today = new Date();
+  const todayDay = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][today.getDay()];
+
+  DAYS.forEach(day=>{
+    const isToday = (fmtISO(viewDate)===fmtISO(today)) && (day===todayDay);
+
+    const card = document.createElement("section");
+    card.className = "day" + (isToday ? " today":"");
+
+    const head = document.createElement("header");
+    const title = document.createElement("div");
+    title.className = "day-title";
+    title.textContent = `${day} — Week ${wk}`;
+    head.appendChild(title);
+    card.appendChild(head);
+
+    const list = document.createElement("div");
+    list.className = "list";
+
+    const items = DATA[wk][day] || [];
+    items.forEach((item, idx)=>{
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const p = document.createElement("div");
+      p.className = "pnum";
+      p.textContent = (idx+1);  // just order number
+      row.appendChild(p);
+
+      const text = document.createElement("div");
+      const main = document.createElement("div");
+      main.className = "main";
+      main.textContent = subjectTitle(item.code);
+
+      const sub = document.createElement("div");
+      sub.className = "sub";
+      const room = item.room ? ` • ${item.room}` : "";
+      sub.textContent = `${item.teacher || ""}${room}`;
+
+      text.appendChild(main);
+      text.appendChild(sub);
+      row.appendChild(text);
+
+      list.appendChild(row);
+    });
+
+    card.appendChild(list);
+    daysEl.appendChild(card);
+  });
+}
+
+$("#toggle").addEventListener("click", ()=>{
+  // move viewDate by 7 days to flip A/B (keeps same weekday highlight)
+  viewDate = new Date(viewDate);
+  viewDate.setDate(viewDate.getDate()+7);
+  render();
+});
+
+$("#todayBtn").addEventListener("click", ()=>{
+  viewDate = new Date();
+  render();
+});
+
+// init: if you open this on Thu 4 Sep 2025 (your “ThuA”), it’ll show A.
+// otherwise the seed logic still works.
+render();
+</script>
+</body>
+</html>
