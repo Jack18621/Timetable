@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Jack — Today</title>
+<style>
+  :root{--bg:#0b0f17;--card:#111827;--ink:#e5e7eb;--muted:#9aa4b2;--hl:#38bdf8;--line:#1f2937;--pill:#0e1625;--accent:#60a5fa;--r:16px}
+  body{margin:0;background:var(--bg);color:var(--ink);font:600 16px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;-webkit-font-smoothing:antialiased;padding:14px}
+  .wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;position:sticky;top:8px;z-index:10}
+  h1{margin:0;font-size:18px}
+  .meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-weight:700}
+  .meta strong{color:var(--ink)}
+  .controls{display:flex;gap:8px}
+  button{appearance:none;border:1px solid var(--line);background:var(--pill);color:var(--ink);padding:9px 12px;border-radius:12px;font-weight:800}
+  button.primary{background:linear-gradient(90deg,var(--hl),var(--accent));color:#08131b;border-color:transparent}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+  .dayHead{padding:12px 14px;font-size:17px;color:var(--hl)}
+  .list{display:flex;flex-direction:column}
+  .row{display:grid;grid-template-columns:28px 1fr;gap:10px;border-top:1px solid var(--line);padding:12px 14px}
+  .pnum{width:28px;height:28px;border-radius:8px;background:var(--pill);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .main{font-size:16px}
+  .sub{font-size:12px;color:var(--muted);margin-top:2px;font-weight:700}
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Jack’s Timetable</h1>
+    <div class="meta">
+      <span id="dayMeta">—</span> • <span>Week <strong id="weekMeta">A</strong></span>
+    </div>
+    <div class="controls">
+      <button id="prevBtn">◀</button>
+      <button id="todayBtn" class="primary">Today</button>
+      <button id="nextBtn">▶</button>
+      <button id="flipBtn">Flip A/B</button>
+    </div>
+  </header>
+
+  <!-- SINGLE card for the viewed day -->
+  <section class="card">
+    <div class="dayHead" id="title">—</div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <footer>Seed: <b>Thu 4 Sep 2025</b> is <b>Week A</b>. Weeks flip each Monday.</footer>
+</div>
+
+<script>
+/* ===== DATA (from your sheet). “HO” is shown as Food Technology. ===== */
+const DATA = {
+  nameFromCode(code){
+    const m = /\/([A-Za-z]+)\d*/.exec(code||""); const k = m ? m[1].toLowerCase() : "";
+    if(k === "ho") return "Food Technology";
+    const map = { sc:"Science", en:"English", ma:"Maths", gg:"Geography", bs:"Business",
+                  re:"RE", cpl:"Computer Science", pe:"PE", ec:"Economics" };
+    return map[k] || code;
+  },
+  A: {
+    Mon: [
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11G/En1", room:"C8",  teacher:"Mrs H C Bell" },
+      { code:"11G/Sc1", room:"C38", teacher:"Mr C A James" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+    ],
+    Tue: [
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11C/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" },
+    ],
+    Wed: [
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+    ],
+    Thu: [
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11C/Gg1", room:"C20", teacher:"Mrs H E R Smith" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+    ],
+    Fri: [
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11G/Re1", room:"C19", teacher:"Mrs S A Wigzell" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+    ],
+  },
+  B: {
+    Mon: [
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11G/Ec1", room:"C22", teacher:"Mr E T Houghton" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr C A James" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+    ],
+    Tue: [
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/Sc1", room:"C33", teacher:"Mr C A James" },
+    ],
+    Wed: [
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+      { code:"11G/Sc1", room:"C38", teacher:"Mr C A James" },
+    ],
+    Thu: [
+      { code:"11G/En1", room:"C7",  teacher:"Mrs A I K Murrell" },
+      { code:"11A/Ho1", room:"G6",  teacher:"Ms E Brown" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11G/Pe3", room:"",    teacher:"Mr M A Bell" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11D/Cpl", room:"C26", teacher:"Mr K A Harrison" },
+    ],
+    Fri: [
+      { code:"11G/Ma1", room:"A8",  teacher:"Mr M Kearns" },
+      { code:"11C/Gg1", room:"C16", teacher:"Miss J Walby" },
+      { code:"11B/Bs1", room:"G11", teacher:"Ms A Eastwood" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+      { code:"11G/En1", room:"C8",  teacher:"Mrs H C Bell" },
+      { code:"11G/Sc1", room:"C29", teacher:"Mr A Withers" },
+    ],
+  }
+};
+
+/* ===== A/B logic (Thu 2025-09-04 is Week A; flip each Monday) ===== */
+const SEED_ISO = "2025-09-04";
+const SEED_IS_A = true;
+const DAYS = ["Mon","Tue","Wed","Thu","Fri"];
+const DayName = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+const $ = s => document.querySelector(s);
+const list = $("#list"), title = $("#title");
+const weekMeta = $("#weekMeta"), dayMeta = $("#dayMeta");
+
+function parseISO(s){const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d);}
+function fmtISO(d){return d.toISOString().slice(0,10);}
+function startMon(d){const x=new Date(d); const dow=(x.getDay()+6)%7; x.setDate(x.getDate()-dow); x.setHours(0,0,0,0); return x;}
+function weekDiff(a,b){const ms=7*24*60*60*1000; return Math.round((startMon(a)-startMon(b))/ms);}
+function weekFor(date){
+  const diff = Math.abs(weekDiff(date, parseISO(SEED_ISO)));
+  const same = (diff % 2) === 0;
+  return (SEED_IS_A ? (same ? "A":"B") : (same ? "B":"A"));
+}
+
+let viewDate = new Date();
+
+function render(){
+  const wk = weekFor(viewDate);
+  const dname = DayName[viewDate.getDay()];
+  dayMeta.textContent = dname;
+  weekMeta.textContent = wk;
+
+  title.textContent = `${dname} — Week ${wk}`;
+
+  list.innerHTML = ""; // CLEAR and build ONLY TODAY
+  if(!DAYS.includes(dname)){
+    addRow("-", "No school", "Weekend");
+    return;
+  }
+
+  const items = DATA[wk][dname] || [];
+  items.forEach((it, i)=>{
+    const main = DATA.nameFromCode(it.code);
+    const sub = `${it.teacher || ""}${it.room ? " • "+it.room : ""}`;
+    addRow(i+1, main, sub);
+  });
+}
+
+function addRow(num, main, sub){
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <div class="pnum">${num}</div>
+    <div><div class="main">${main}</div><div class="sub">${sub}</div></div>`;
+  list.appendChild(row);
+}
+
+/* Buttons */
+$("#todayBtn").addEventListener("click", ()=>{ viewDate = new Date(); render(); });
+$("#prevBtn").addEventListener("click", ()=>{ viewDate.setDate(viewDate.getDate()-1); render(); });
+$("#nextBtn").addEventListener("click", ()=>{ viewDate.setDate(viewDate.getDate()+1); render(); });
+$("#flipBtn").addEventListener("click", ()=>{ viewDate.setDate(viewDate.getDate()+7); render(); });
+
+render();
+</script>
+</body>
+</html>
