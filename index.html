@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GCSE PDF Question Player (No‑AI)</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- PDF.js via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.js"></script>
+  <script>
+    // Configure worker (must be same version as main script)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js";
+  </script>
+</head>
+<body>
+  <header>
+    <h1>GCSE PDF Question Player</h1>
+    <div class="uploader">
+      <input type="file" id="pdfFile" accept="application/pdf">
+      <button id="loadBtn">Load PDF</button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="sidebar">
+      <div class="panel">
+        <h3>Questions</h3>
+        <div id="questionList"></div>
+      </div>
+      <div class="panel">
+        <h3>Mark Scheme (parsed)</h3>
+        <div id="markSchemePanel"><em>Load a PDF to parse…</em></div>
+      </div>
+      <div class="panel">
+        <h3>Tools</h3>
+        <div class="tools">
+          <button data-tool="text">Text Box</button>
+          <button data-tool="checkbox">Checkbox</button>
+          <button data-tool="match">Match (connect)</button>
+          <button data-tool="select">Select/Move</button>
+          <button id="clearOverlays">Clear current question</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Marking</h3>
+        <button id="markBtn">Mark This Question</button>
+        <div id="markResult"></div>
+      </div>
+    </aside>
+
+    <section id="viewerSection">
+      <div id="navBar">
+        <button id="prevQ">&larr; Prev</button>
+        <div id="currentQ">Q–</div>
+        <button id="nextQ">Next &rarr;</button>
+      </div>
+      <div id="pagesContainer"></div>
+    </section>
+  </main>
+
+  <footer>
+    <small>No AI used for parsing or marking. Pure rule‑based extraction and keyword/option checks. Manual override available.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
